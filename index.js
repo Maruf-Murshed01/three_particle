@@ -1,17 +1,25 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Scene setup
+// Scene setup with clean white background
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000011);
+scene.background = new THREE.Color(0xffffff); // Pure white background
 
 // Camera setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(50, 50, 50);
 
-// Renderer setup
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// Renderer setup with enhanced quality
+const renderer = new THREE.WebGLRenderer({ 
+    antialias: true,
+    alpha: true,
+    powerPreference: "high-performance"
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 // Add OrbitControls for 3D navigation
@@ -19,8 +27,8 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.screenSpacePanning = false;
-controls.minDistance = 10;
-controls.maxDistance = 200;
+controls.minDistance = 15;
+controls.maxDistance = 150;
 controls.maxPolarAngle = Math.PI;
 
 // Raycaster for mouse picking
@@ -36,25 +44,40 @@ let edgeObjects = [];
 // Hover state
 let hoveredNode = null;
 
-// Color palette for different groups (similar to Viridis colorscale)
+// Microsoft Fluent Design color palette
 const groupColors = [
-    0x440154, 0x482777, 0x3f4a8a, 0x31678e, 0x26838f,
-    0x1f9d8a, 0x6cce5a, 0xb6de2b, 0xfee825, 0xfde725
+    0x0078d4, // Microsoft Blue (primary)
+    0x107c10, // Microsoft Green
+    0xff4b4b, // Microsoft Red
+    0xffb900, // Microsoft Yellow/Orange
+    0x5c2d91, // Microsoft Purple
+    0x00bcf2, // Microsoft Light Blue
+    0x498205, // Microsoft Dark Green
+    0xd13438, // Microsoft Dark Red
+    0xca5010, // Microsoft Orange
+    0x8764b8, // Microsoft Light Purple
+    0x038387, // Microsoft Teal
+    0x8e562e, // Microsoft Brown
+    0x567c73, // Microsoft Sage
+    0x486991, // Microsoft Steel Blue
+    0x744da9  // Microsoft Violet
 ];
 
-// Create tooltip element
+// Create Microsoft-style tooltip element
 const tooltip = document.createElement('div');
 tooltip.style.position = 'absolute';
-tooltip.style.padding = '8px 12px';
-tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
-tooltip.style.color = 'white';
+tooltip.style.padding = '12px 16px';
+tooltip.style.background = '#ffffff';
+tooltip.style.color = '#323130';
 tooltip.style.borderRadius = '4px';
-tooltip.style.fontFamily = 'Arial, sans-serif';
-tooltip.style.fontSize = '12px';
+tooltip.style.fontFamily = '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif';
+tooltip.style.fontSize = '14px';
+tooltip.style.fontWeight = '400';
 tooltip.style.pointerEvents = 'none';
 tooltip.style.display = 'none';
 tooltip.style.zIndex = '1000';
-tooltip.style.border = '1px solid #555';
+tooltip.style.border = '1px solid #e1dfdd';
+tooltip.style.boxShadow = '0 6.4px 14.4px 0 rgba(0,0,0,0.132), 0 1.2px 3.6px 0 rgba(0,0,0,0.108)';
 document.body.appendChild(tooltip);
 
 // Load and process the network data
@@ -163,7 +186,7 @@ function applyForceLayout() {
 
 // Create the 3D network visualization
 function createNetworkVisualization() {
-    // Create edges (lines)
+    // Create edges with Microsoft-style subtle lines
     edges.forEach(edge => {
         const source = nodes[edge.source];
         const target = nodes[edge.target];
@@ -176,9 +199,9 @@ function createNetworkVisualization() {
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         
         const material = new THREE.LineBasicMaterial({ 
-            color: 0x555555,
+            color: 0xc8c6c4, // Microsoft neutral gray
             transparent: true,
-            opacity: 0.6
+            opacity: 0.5
         });
         
         const line = new THREE.Line(geometry, material);
@@ -186,14 +209,21 @@ function createNetworkVisualization() {
         edgeObjects.push(line);
     });
     
-    // Create nodes (spheres)
+    // Create nodes with Microsoft Fluent Design materials
     nodes.forEach(node => {
-        const geometry = new THREE.SphereGeometry(0.8, 16, 16);
+        const geometry = new THREE.SphereGeometry(1.2, 32, 32);
         const color = groupColors[node.group % groupColors.length];
-        const material = new THREE.MeshLambertMaterial({ color: color });
+        
+        const material = new THREE.MeshLambertMaterial({ 
+            color: color,
+            transparent: false,
+            opacity: 1.0
+        });
         
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.set(node.x, node.y, node.z);
+        sphere.castShadow = true;
+        sphere.receiveShadow = true;
         sphere.userData = { 
             name: node.name, 
             group: node.group,
@@ -205,22 +235,22 @@ function createNetworkVisualization() {
         nodeObjects.push(sphere);
     });
     
-    // Add lighting for better 3D effect
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+    // Clean, bright lighting for white background
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
     
-    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight1.position.set(1, 1, 1);
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
+    directionalLight1.position.set(50, 50, 50);
+    directionalLight1.castShadow = true;
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
+    directionalLight1.shadow.camera.near = 0.5;
+    directionalLight1.shadow.camera.far = 500;
     scene.add(directionalLight1);
     
-    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
-    directionalLight2.position.set(-1, -1, -1);
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight2.position.set(-50, -50, -50);
     scene.add(directionalLight2);
-    
-    // Add a subtle point light for depth
-    const pointLight = new THREE.PointLight(0xffffff, 0.3, 100);
-    pointLight.position.set(0, 0, 50);
-    scene.add(pointLight);
 }
 
 // Handle mouse hover for tooltips
@@ -246,17 +276,18 @@ function onMouseMove(event) {
         const intersectedNode = intersects[0].object;
         hoveredNode = intersectedNode;
         
-        // Highlight the hovered node
-        intersectedNode.material.color.setHex(0xffffff);
-        intersectedNode.scale.setScalar(1.5);
+        // Highlight with Microsoft-style hover effect
+        const lighterColor = new THREE.Color(intersectedNode.userData.originalColor).lerp(new THREE.Color(0xffffff), 0.3);
+        intersectedNode.material.color.setHex(lighterColor.getHex());
+        intersectedNode.scale.setScalar(1.3);
         
-        // Show tooltip
+        // Show Microsoft-style tooltip
         tooltip.innerHTML = `
-            <strong>${intersectedNode.userData.name}</strong><br>
-            Group: ${intersectedNode.userData.group}
+            <div style="font-weight: 600; color: #323130; margin-bottom: 4px;">${intersectedNode.userData.name}</div>
+            <div style="color: #605e5c; font-size: 12px;">Group ${intersectedNode.userData.group}</div>
         `;
         tooltip.style.display = 'block';
-        tooltip.style.left = event.clientX + 10 + 'px';
+        tooltip.style.left = event.clientX + 15 + 'px';
         tooltip.style.top = event.clientY - 10 + 'px';
         
         // Change cursor to pointer
@@ -288,22 +319,30 @@ function animate() {
 document.addEventListener('mousemove', onMouseMove, false);
 window.addEventListener('resize', onWindowResize, false);
 
-// Add some info text with 3D controls instructions
+// Add Microsoft-style info panel
 const info = document.createElement('div');
 info.style.position = 'absolute';
-info.style.top = '10px';
-info.style.left = '10px';
-info.style.color = 'white';
-info.style.fontFamily = 'Arial, sans-serif';
+info.style.top = '20px';
+info.style.left = '20px';
+info.style.background = '#ffffff';
+info.style.color = '#323130';
+info.style.fontFamily = '"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif';
 info.style.fontSize = '14px';
+info.style.padding = '20px';
+info.style.borderRadius = '4px';
+info.style.border = '1px solid #e1dfdd';
+info.style.boxShadow = '0 6.4px 14.4px 0 rgba(0,0,0,0.132), 0 1.2px 3.6px 0 rgba(0,0,0,0.108)';
 info.innerHTML = `
-    <h3>Les Misérables Character Network (3D)</h3>
-    <p><strong>Controls:</strong></p>
-    <p>• Left click + drag: Orbit around</p>
-    <p>• Right click + drag: Pan</p>
-    <p>• Mouse wheel: Zoom in/out</p>
-    <p>• Hover over nodes: See character names</p>
-    <p>${nodes.length} characters • ${edges.length} connections</p>
+    <h3 style="margin: 0 0 16px 0; color: #0078d4; font-weight: 600; font-size: 18px;">Character Network Analysis</h3>
+    <div style="margin-bottom: 8px; color: #323130;"><strong>Dataset:</strong> Les Misérables</div>
+    <div style="margin-bottom: 8px; color: #323130;"><strong>Characters:</strong> ${nodes.length}</div>
+    <div style="margin-bottom: 16px; color: #323130;"><strong>Relationships:</strong> ${edges.length}</div>
+    <div style="font-size: 12px; color: #605e5c; line-height: 1.4;">
+        <div style="margin-bottom: 4px;">🖱️ Left drag: Rotate view</div>
+        <div style="margin-bottom: 4px;">🖱️ Right drag: Pan</div>
+        <div style="margin-bottom: 4px;">🖱️ Scroll: Zoom</div>
+        <div>🖱️ Hover: Character details</div>
+    </div>
 `;
 document.body.appendChild(info);
 
