@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -6,21 +7,25 @@ scene.background = new THREE.Color(0x000011);
 
 // Camera setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 0, 50);
+camera.position.set(50, 50, 50);
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Add OrbitControls for 3D navigation
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.screenSpacePanning = false;
+controls.minDistance = 10;
+controls.maxDistance = 200;
+controls.maxPolarAngle = Math.PI;
+
 // Raycaster for mouse picking
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-
-// Controls for mouse interaction
-let mouseX = 0, mouseY = 0;
-let targetRotationX = 0, targetRotationY = 0;
-let rotationX = 0, rotationY = 0;
 
 // Network data storage
 let nodes = [];
@@ -185,7 +190,7 @@ function createNetworkVisualization() {
     nodes.forEach(node => {
         const geometry = new THREE.SphereGeometry(0.8, 16, 16);
         const color = groupColors[node.group % groupColors.length];
-        const material = new THREE.MeshBasicMaterial({ color: color });
+        const material = new THREE.MeshLambertMaterial({ color: color });
         
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.set(node.x, node.y, node.z);
@@ -200,24 +205,26 @@ function createNetworkVisualization() {
         nodeObjects.push(sphere);
     });
     
-    // Add some ambient lighting
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    // Add lighting for better 3D effect
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
     scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight1.position.set(1, 1, 1);
+    scene.add(directionalLight1);
+    
+    const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+    directionalLight2.position.set(-1, -1, -1);
+    scene.add(directionalLight2);
+    
+    // Add a subtle point light for depth
+    const pointLight = new THREE.PointLight(0xffffff, 0.3, 100);
+    pointLight.position.set(0, 0, 50);
+    scene.add(pointLight);
 }
 
 // Handle mouse hover for tooltips
 function onMouseMove(event) {
-    // Update rotation controls
-    mouseX = (event.clientX - window.innerWidth / 2);
-    mouseY = (event.clientY - window.innerHeight / 2);
-    
-    targetRotationX = (mouseY * 0.002);
-    targetRotationY = (mouseX * 0.002);
-    
     // Update mouse coordinates for raycasting
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -271,13 +278,8 @@ function onWindowResize() {
 function animate() {
     requestAnimationFrame(animate);
     
-    // Smooth rotation based on mouse movement
-    rotationX += (targetRotationX - rotationX) * 0.05;
-    rotationY += (targetRotationY - rotationY) * 0.05;
-    
-    // Rotate the entire scene
-    scene.rotation.x = rotationX;
-    scene.rotation.y = rotationY;
+    // Update controls
+    controls.update();
     
     renderer.render(scene, camera);
 }
@@ -286,7 +288,7 @@ function animate() {
 document.addEventListener('mousemove', onMouseMove, false);
 window.addEventListener('resize', onWindowResize, false);
 
-// Add some info text
+// Add some info text with 3D controls instructions
 const info = document.createElement('div');
 info.style.position = 'absolute';
 info.style.top = '10px';
@@ -295,10 +297,13 @@ info.style.color = 'white';
 info.style.fontFamily = 'Arial, sans-serif';
 info.style.fontSize = '14px';
 info.innerHTML = `
-    <h3>Les Misérables Character Network</h3>
-    <p>Move mouse to rotate • Hover over nodes to see character names</p>
+    <h3>Les Misérables Character Network (3D)</h3>
+    <p><strong>Controls:</strong></p>
+    <p>• Left click + drag: Orbit around</p>
+    <p>• Right click + drag: Pan</p>
+    <p>• Mouse wheel: Zoom in/out</p>
+    <p>• Hover over nodes: See character names</p>
     <p>${nodes.length} characters • ${edges.length} connections</p>
-    <p>Colors represent different character groups</p>
 `;
 document.body.appendChild(info);
 
