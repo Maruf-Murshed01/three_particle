@@ -13,6 +13,10 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Raycaster for mouse picking
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
 // Controls for mouse interaction
 let mouseX = 0, mouseY = 0;
 let targetRotationX = 0, targetRotationY = 0;
@@ -24,11 +28,29 @@ let edges = [];
 let nodeObjects = [];
 let edgeObjects = [];
 
+// Hover state
+let hoveredNode = null;
+
 // Color palette for different groups (similar to Viridis colorscale)
 const groupColors = [
     0x440154, 0x482777, 0x3f4a8a, 0x31678e, 0x26838f,
     0x1f9d8a, 0x6cce5a, 0xb6de2b, 0xfee825, 0xfde725
 ];
+
+// Create tooltip element
+const tooltip = document.createElement('div');
+tooltip.style.position = 'absolute';
+tooltip.style.padding = '8px 12px';
+tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
+tooltip.style.color = 'white';
+tooltip.style.borderRadius = '4px';
+tooltip.style.fontFamily = 'Arial, sans-serif';
+tooltip.style.fontSize = '12px';
+tooltip.style.pointerEvents = 'none';
+tooltip.style.display = 'none';
+tooltip.style.zIndex = '1000';
+tooltip.style.border = '1px solid #555';
+document.body.appendChild(tooltip);
 
 // Load and process the network data
 async function loadNetworkData() {
@@ -167,7 +189,12 @@ function createNetworkVisualization() {
         
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.set(node.x, node.y, node.z);
-        sphere.userData = { name: node.name, group: node.group };
+        sphere.userData = { 
+            name: node.name, 
+            group: node.group,
+            originalColor: color,
+            originalScale: 1
+        };
         
         scene.add(sphere);
         nodeObjects.push(sphere);
@@ -182,13 +209,55 @@ function createNetworkVisualization() {
     scene.add(directionalLight);
 }
 
-// Mouse interaction
+// Handle mouse hover for tooltips
 function onMouseMove(event) {
+    // Update rotation controls
     mouseX = (event.clientX - window.innerWidth / 2);
     mouseY = (event.clientY - window.innerHeight / 2);
     
     targetRotationX = (mouseY * 0.002);
     targetRotationY = (mouseX * 0.002);
+    
+    // Update mouse coordinates for raycasting
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Raycast to detect hover
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(nodeObjects);
+    
+    // Reset previous hover state
+    if (hoveredNode) {
+        hoveredNode.material.color.setHex(hoveredNode.userData.originalColor);
+        hoveredNode.scale.setScalar(hoveredNode.userData.originalScale);
+        hoveredNode = null;
+        tooltip.style.display = 'none';
+    }
+    
+    // Handle new hover
+    if (intersects.length > 0) {
+        const intersectedNode = intersects[0].object;
+        hoveredNode = intersectedNode;
+        
+        // Highlight the hovered node
+        intersectedNode.material.color.setHex(0xffffff);
+        intersectedNode.scale.setScalar(1.5);
+        
+        // Show tooltip
+        tooltip.innerHTML = `
+            <strong>${intersectedNode.userData.name}</strong><br>
+            Group: ${intersectedNode.userData.group}
+        `;
+        tooltip.style.display = 'block';
+        tooltip.style.left = event.clientX + 10 + 'px';
+        tooltip.style.top = event.clientY - 10 + 'px';
+        
+        // Change cursor to pointer
+        document.body.style.cursor = 'pointer';
+    } else {
+        // Reset cursor
+        document.body.style.cursor = 'default';
+    }
 }
 
 // Handle window resize
@@ -227,7 +296,8 @@ info.style.fontFamily = 'Arial, sans-serif';
 info.style.fontSize = '14px';
 info.innerHTML = `
     <h3>Les Misérables Character Network</h3>
-    <p>Move mouse to rotate • ${nodes.length} characters • ${edges.length} connections</p>
+    <p>Move mouse to rotate • Hover over nodes to see character names</p>
+    <p>${nodes.length} characters • ${edges.length} connections</p>
     <p>Colors represent different character groups</p>
 `;
 document.body.appendChild(info);
